@@ -48,7 +48,7 @@ def get_clean_dataset():
         st.error(f"Failed to fetch data from GitHub. Please check your GITHUB_RAW_URL connection string. Error: {e}")
         st.stop()
     
-    # 🌟 CRITICAL FIX: Strip invisible spaces, BOM characters, or quotes from column headers
+    # Strip invisible spaces, BOM characters, or quotes from column headers
     df.columns = df.columns.str.strip().str.replace('"', '').str.replace("'", "")
     
     # Identify target columns using flexible text matching to prevent KeyErrors
@@ -175,15 +175,17 @@ with prediction_tab:
                                   columns=['Qty_Cleaned', 'Value_Cleaned', 'global_demand_growth', 'tariff_advantage_score', 'logistical_cost_score'])
         
         scaled_input = scaler.transform(input_data)
-        prediction = model.predict(scaled_input)
+        
+        # 🌟 CRITICAL FIX: Cast prediction and probability explicitly to Python scalars
+        prediction_val = str(model.predict(scaled_input)[0])
         pos_idx = metrics["classes"].index(POSITIVE)
-        probability = model.predict_proba(scaled_input)[pos_idx]
+        probability_val = float(model.predict_proba(scaled_input)[0][pos_idx])
         
         st.markdown("---")
-        if prediction == POSITIVE:
-            st.success(f"🎉 **Status:** {prediction} (Confidence Vector: {probability:.1%})")
+        if prediction_val == POSITIVE:
+            st.success(f"🎉 **Status:** {prediction_val} (Confidence Vector: {probability_val:.1%})")
         else:
-            st.error(f"⚠️ **Status:** {prediction} (Confidence Vector: {probability:.1%})")
+            st.error(f"⚠️ **Status:** {prediction_val} (Confidence Vector: {probability_val:.1%})")
 
 with results_tab:
     st.subheader("Logistic Regression Validation Matrix")
