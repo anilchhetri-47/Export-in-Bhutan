@@ -123,11 +123,11 @@ with data_tab:
         random_state=42
     )
 
-    with prediction_tab:
+    
     # ---------------------------------------------------
     # MODEL
     # ---------------------------------------------------
-
+with prediction_tab:
     model = LogisticRegression()
 
     model.fit(
