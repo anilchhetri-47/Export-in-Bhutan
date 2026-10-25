@@ -43,8 +43,6 @@ if uploaded_file is not None:
 
     df = pd.read_csv(uploaded_file)
 
-    overview_tab, data_tab, prediction_tab, results_tab = st.tabs(
-    ["Overview", "Explore data", "Prediction demo", "Model results"]
 )
     
  overview_tab, data_tab, prediction_tab, results_tab = st.tabs(
