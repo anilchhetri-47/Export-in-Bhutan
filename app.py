@@ -48,9 +48,28 @@ def get_clean_dataset():
         st.error(f"Failed to fetch data from GitHub. Please check your GITHUB_RAW_URL connection string. Error: {e}")
         st.stop()
     
+    # 🌟 CRITICAL FIX: Strip invisible spaces, BOM characters, or quotes from column headers
+    df.columns = df.columns.str.strip().str.replace('"', '').str.replace("'", "")
+    
+    # Identify target columns using flexible text matching to prevent KeyErrors
+    qty_col = [c for c in df.columns if 'qty' in c.lower()]
+    val_col = [c for c in df.columns if 'val' in c.lower()]
+    
+    qty_name = qty_col[0] if qty_col else 'Qty'
+    val_name = val_col[0] if val_col else 'Value'
+    
     # Fill empty text columns and convert quantity and numeric inputs safely
-    df['Qty'] = pd.to_numeric(df['Qty'], errors='coerce').fillna(df['Qty'].median() if 'Qty' in df else 5000)
-    df['Value'] = pd.to_numeric(df['Value'], errors='coerce').fillna(df['Value'].median() if 'Value' in df else 500000)
+    if qty_name in df.columns:
+        df['Qty_Cleaned'] = pd.to_numeric(df[qty_name], errors='coerce')
+        df['Qty_Cleaned'] = df['Qty_Cleaned'].fillna(df['Qty_Cleaned'].median() if df['Qty_Cleaned'].notna().any() else 5000)
+    else:
+        df['Qty_Cleaned'] = 5000
+
+    if val_name in df.columns:
+        df['Value_Cleaned'] = pd.to_numeric(df[val_name], errors='coerce')
+        df['Value_Cleaned'] = df['Value_Cleaned'].fillna(df['Value_Cleaned'].median() if df['Value_Cleaned'].notna().any() else 500000)
+    else:
+        df['Value_Cleaned'] = 500000
     
     # Enrich with synthetic pipeline features for predicting high export potential
     rng = np.random.default_rng(42)
@@ -61,7 +80,7 @@ def get_clean_dataset():
     df['logistical_cost_score'] = rng.uniform(1, 10, n).round(1)
     
     # Formula logic for assigning target classifications
-    latent = (0.4 * np.log1p(df['Value']) + 0.35 * df['global_demand_growth'] + 
+    latent = (0.4 * np.log1p(df['Value_Cleaned']) + 0.35 * df['global_demand_growth'] + 
               0.25 * df['tariff_advantage_score'] - 0.3 * df['logistical_cost_score'] + 
               rng.normal(0, 1.0, n))
     
@@ -71,7 +90,7 @@ def get_clean_dataset():
 
 @st.cache_resource
 def run_model_training(data):
-    X = data[['Qty', 'Value', 'global_demand_growth', 'tariff_advantage_score', 'logistical_cost_score']]
+    X = data[['Qty_Cleaned', 'Value_Cleaned', 'global_demand_growth', 'tariff_advantage_score', 'logistical_cost_score']]
     y = data[TARGET]
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
@@ -127,7 +146,7 @@ with data_tab:
     
     metric_view = st.selectbox(
         "Select Independent Metric Target:",
-        ["Value", "global_demand_growth", "tariff_advantage_score", "logistical_cost_score"]
+        ["Value_Cleaned", "Qty_Cleaned", "global_demand_growth", "tariff_advantage_score", "logistical_cost_score"]
     )
     
     fig, ax = plt.subplots(figsize=(10, 4))
@@ -153,7 +172,7 @@ with prediction_tab:
         
     if st.button("Evaluate Export Status"):
         input_data = pd.DataFrame([[qty_in, val_in, demand_in, tariff_in, logistic_in]],
-                                  columns=['Qty', 'Value', 'global_demand_growth', 'tariff_advantage_score', 'logistical_cost_score'])
+                                  columns=['Qty_Cleaned', 'Value_Cleaned', 'global_demand_growth', 'tariff_advantage_score', 'logistical_cost_score'])
         
         scaled_input = scaler.transform(input_data)
         prediction = model.predict(scaled_input)
