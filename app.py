@@ -217,3 +217,7 @@ with results_tab:
     ax_cm.set_xlabel("Predicted Categories")
     ax_cm.set_ylabel("True Ground Labels")
     st.pyplot(fig_cm)
+
+st.divider()
+st.caption(
+    "Bhutan India Export AI Project | Synthetic Data | Educational/Research Prototype | By: Anil Chhetri | OCT 2026")
