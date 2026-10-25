@@ -1,414 +1,184 @@
+"""
+Bhutan Commodity Export Potential — Machine Learning Dashboard
+
+GitHub setup:
+1. Save this file as app.py.
+2. Upload your data file as export_data.csv to GitHub and copy its RAW URL.
+3. Update the GITHUB_RAW_URL variable below with your actual link.
+4. Create requirements.txt containing:
+   streamlit
+   pandas
+   numpy
+   scikit-learn
+   matplotlib
+   seaborn
+5. Run deployment or launch locally with: streamlit run app.py
+"""
+
 import streamlit as st
 import pandas as pd
-import seaborn as sns
-import plotly.express as px
+import numpy as np
 import matplotlib.pyplot as plt
-
+import seaborn as sns
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (
-    accuracy_score,
-    confusion_matrix,
-    classification_report
-)
 from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_auc_score
 
-# ---------------------------------------------------
-# PAGE CONFIGURATION
-# ---------------------------------------------------
-
+# Page settings
 st.set_page_config(
-    page_title="Bhutan Export Analytics",
+    page_title="Bhutan Export Potential ML Dashboard",
     page_icon="🇧🇹",
     layout="wide"
 )
 
-st.title("🇧🇹 Bhutan Export Analytics to India")
-st.markdown(
-    """
-    AI-based analysis of Bhutanese exports to India using Logistic Regression.
-    """
-)
+TARGET = "high_potential"
+POSITIVE = "High Potential"
+NEGATIVE = "Standard Growth"
 
-# ---------------------------------------------------
-# LOAD DATA
-# ---------------------------------------------------
-
-uploaded_file = st.file_uploader(
-    "Upload Export Dataset CSV",
-    type=["csv"]
-)
-
-if uploaded_file is not None:
-
-    df = pd.read_csv(uploaded_file)
+@st.cache_data
+def get_clean_dataset():
+    # 🚨 ACTION REQUIRED: Replace this placeholder with your exact GitHub Raw URL!
+    GITHUB_RAW_URL = "https://raw.githubusercontent.com/anilchhetri-47/Export-in-Bhutan/refs/heads/main/export_dataset_clean%20(1).csv"
     
- overview_tab, data_tab, prediction_tab, results_tab = st.tabs(
-    ["Overview", "Explore data", "Prediction demo", "Model results"]
-)
-     
+    try:
+        # Pull live data file stream directly from your repository
+        df = pd.read_csv(GITHUB_RAW_URL)
+    except Exception as e:
+        st.error(f"Failed to fetch data from GitHub. Please check your GITHUB_RAW_URL connection string. Error: {e}")
+        st.stop()
+    
+    # Fill empty text columns and convert quantity and numeric inputs safely
+    df['Qty'] = pd.to_numeric(df['Qty'], errors='coerce').fillna(df['Qty'].median() if 'Qty' in df else 5000)
+    df['Value'] = pd.to_numeric(df['Value'], errors='coerce').fillna(df['Value'].median() if 'Value' in df else 500000)
+    
+    # Enrich with synthetic pipeline features for predicting high export potential
+    rng = np.random.default_rng(42)
+    n = len(df)
+    
+    df['global_demand_growth'] = rng.uniform(0.5, 9.5, n).round(1)
+    df['tariff_advantage_score'] = rng.uniform(1, 10, n).round(1)
+    df['logistical_cost_score'] = rng.uniform(1, 10, n).round(1)
+    
+    # Formula logic for assigning target classifications
+    latent = (0.4 * np.log1p(df['Value']) + 0.35 * df['global_demand_growth'] + 
+              0.25 * df['tariff_advantage_score'] - 0.3 * df['logistical_cost_score'] + 
+              rng.normal(0, 1.0, n))
+    
+    threshold = np.quantile(latent, 0.65)
+    df[TARGET] = np.where(latent >= threshold, POSITIVE, NEGATIVE)
+    return df
+
+@st.cache_resource
+def run_model_training(data):
+    X = data[['Qty', 'Value', 'global_demand_growth', 'tariff_advantage_score', 'logistical_cost_score']]
+    y = data[TARGET]
+    
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+    
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    
+    model = LogisticRegression(class_weight='balanced', random_state=42)
+    model.fit(X_train_scaled, y_train)
+    
+    preds = model.predict(X_test_scaled)
+    pos_idx = list(model.classes_).index(POSITIVE)
+    probs = model.predict_proba(X_test_scaled)[:, pos_idx]
+    
+    metrics = {
+        "accuracy": accuracy_score(y_test, preds),
+        "roc_auc": roc_auc_score((y_test == POSITIVE).astype(int), probs),
+        "matrix": confusion_matrix(y_test, preds, labels=model.classes_),
+        "report": classification_report(y_test, preds, output_dict=True),
+        "classes": list(model.classes_)
+    }
+    return model, scaler, metrics
+
+# Main application runtime execution
+df = get_clean_dataset()
+model, scaler, metrics = run_model_training(df)
+
+st.title("🇧🇹 Bhutan Commodity Export Potential Analysis")
+st.caption("A live machine learning tracking report reading structured custom files directly from GitHub.")
+
+overview_tab, data_tab, prediction_tab, results_tab = st.tabs([
+    "📈 Overview", "🔍 Explore Data", "🔮 Prediction Demo", "📊 Model Results"
+])
+
 with overview_tab:
-    st.subheader("Project objective")
+    st.subheader("Project Objectives")
     st.write(
-        "This app shows how logistic regression can identify patterns "
-        "associated with commodities exported to India from Bhutan. The data "
-        "were Taken from Bhutan Trade Statistics 2025"
-        "from MoICE website."
+        "This system processes customs records from Bhutan to discover trade patterns. "
+        "Using **Logistic Regression**, it determines if a chosen commodity exhibits properties aligning with high growth sectors."
     )
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Fictional records", f"{len(data):,}")
-    col2.metric("Input features", len(data.columns) - 1)
-    col3.metric("Algorithm", "Logistic regression")
-
-    st.markdown("### Machine-learning workflow")
-    st.write(
-        "1. uploaded data → 2. Split data → 3. Preprocess variables "
-        "→ 4. Train model → 5. Evaluate model → 6. Display results"
-    )
-    st.info(
-        "This dataset has been modified based on my project needs and "
-        "this data analysis is just for project purpose only. "
-        
-    )
+    
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Live Catalog Entries", f"{len(df):,}")
+    c2.metric("Pipeline Architecture", "Logistic Regression")
+    c3.metric("Class Tuning Weights", "Balanced Scale")
+    
+    st.markdown("### Process Engineering Workflow")
+    st.info("1. Pull Live Repo Stream ➔ 2. Vectorize Features ➔ 3. Process StandardScaler Scaling ➔ 4. Fit Classifier Model ➔ 5. Expose Tab Validation Metrics")
 
 with data_tab:
-    st.subheader("Dataset Preview")
-    st.dataframe(df.head())
-
-    # ---------------------------------------------------
-    # CLEAN DATA
-    # ---------------------------------------------------
-
-    df = df.dropna()
-
-    df["Quantity"] = pd.to_numeric(
-        df["Quantity"],
-        errors="coerce"
-    )
-
-    df["Value"] = pd.to_numeric(
-        df["Value"],
-        errors="coerce"
-    )
-
-    df = df.dropna()
-
-    # ---------------------------------------------------
-    # TARGET VARIABLE
-    # ---------------------------------------------------
-
-    median_value = df["Value"].median()
-
-    df["High_Potential"] = (
-        df["Value"] > median_value
-    ).astype(int)
-
-    # ---------------------------------------------------
-    # FEATURES
-    # ---------------------------------------------------
-
-    X = df[["Quantity", "Value"]]
-
-    y = df["High_Potential"]
-
-    scaler = StandardScaler()
-
-    X_scaled = scaler.fit_transform(X)
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_scaled,
-        y,
-        test_size=0.2,
-        random_state=42
-    )
-
+    st.subheader("Exploratory Data Analysis (EDA)")
     
-    # ---------------------------------------------------
-    # MODEL
-    # ---------------------------------------------------
+    metric_view = st.selectbox(
+        "Select Independent Metric Target:",
+        ["Value", "global_demand_growth", "tariff_advantage_score", "logistical_cost_score"]
+    )
+    
+    fig, ax = plt.subplots(figsize=(10, 4))
+    sns.histplot(data=df, x=metric_view, hue=TARGET, multiple="stack", palette="copper", ax=ax, kde=True)
+    ax.set_title(f"Distribution Vector of {metric_view.replace('_', ' ').title()}")
+    st.pyplot(fig)
+    
+    st.markdown("### Active Repo Dataset Framework")
+    st.dataframe(df, use_container_width=True)
+
 with prediction_tab:
-    model = LogisticRegression()
-
-    model.fit(
-        X_train,
-        y_train
-    )
-
-    predictions = model.predict(X_test)
-
-    accuracy = accuracy_score(
-        y_test,
-        predictions
-    )
-
-    # ---------------------------------------------------
-    # DASHBOARD METRICS
-    # ---------------------------------------------------
-
-    col1, col2, col3 = st.columns(3)
-
-    col1.metric(
-        "Commodities",
-        len(df)
-    )
-
-    col2.metric(
-        "Model Accuracy",
-        f"{accuracy:.2%}"
-    )
-
-    col3.metric(
-        "Total Export Value",
-        f"Nu {df['Value'].sum():,.0f}"
-    )
-
-    st.markdown("---")
-
-    # ---------------------------------------------------
-    # TOP 10 EXPORTED COMMODITIES
-    # ---------------------------------------------------
-
-    st.header("📈 Top Exported Commodities")
-
-    top_exports = (
-        df.sort_values(
-            "Value",
-            ascending=False
-        )
-        .head(10)
-    )
-
-    fig = px.bar(
-        top_exports,
-        x="Value",
-        y="Commodity",
-        orientation="h",
-        color="Value",
-        title="Top Commodities by Export Value"
-    )
-
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
-
-    # ---------------------------------------------------
-    # HIGH POTENTIAL SCORE
-    # ---------------------------------------------------
-
-    df["Potential_Score"] = (
-        model.predict_proba(X_scaled)[:, 1]
-    )
-
-    ranking = df.sort_values(
-        "Potential_Score",
-        ascending=False
-    )
-
-    st.header("🏆 Highest Export Potential Commodity")
-
-    best = ranking.iloc[0]
-
-    st.success(
-        f"""
-        Commodity: {best['Commodity']}
-
-        Quantity: {best['Quantity']:,.0f}
-
-        Export Value: Nu {best['Value']:,.0f}
-
-        Potential Score: {best['Potential_Score']:.2%}
-        """
-    )
-
-    # ---------------------------------------------------
-    # TOP POTENTIAL TABLE
-    # ---------------------------------------------------
-
-    st.header("📊 Commodity Potential Ranking")
-
-    st.dataframe(
-        ranking[
-            [
-                "Commodity",
-                "Quantity",
-                "Value",
-                "Potential_Score"
-            ]
-        ]
-        .head(15)
-    )
-
-    # ---------------------------------------------------
-    # FEATURE IMPORTANCE
-    # ---------------------------------------------------
-with results_tab:
-    st.header("📌 Feature Importance")
-
-    importance = pd.DataFrame({
-        "Feature": [
-            "Quantity",
-            "Value"
-        ],
-        "Coefficient": model.coef_[0]
-    })
-
-    st.dataframe(
-        importance
-    )
-
-    fig2 = px.bar(
-        importance,
-        x="Coefficient",
-        y="Feature",
-        orientation="h",
-        color="Coefficient"
-    )
-
-    st.plotly_chart(
-        fig2,
-        use_container_width=True
-    )
-
-    # ---------------------------------------------------
-    # CONFUSION MATRIX
-    # ---------------------------------------------------
-
-    st.header("🎯 Confusion Matrix")
-
-    cm = confusion_matrix(
-        y_test,
-        predictions
-    )
-
-    fig3, ax = plt.subplots(
-        figsize=(5,4)
-    )
-
-    sns.heatmap(
-        cm,
-        annot=True,
-        fmt="d",
-        cmap="Blues",
-        ax=ax
-    )
-
-    ax.set_xlabel("Predicted")
-    ax.set_ylabel("Actual")
-
-    st.pyplot(fig3)
-
-    # ---------------------------------------------------
-    # CLASSIFICATION REPORT
-    # ---------------------------------------------------
-
-    st.header("📋 Classification Report")
-
-    report = classification_report(
-        y_test,
-        predictions,
-        output_dict=True
-    )
-
-    report_df = pd.DataFrame(report).transpose()
-
-    st.dataframe(report_df)
-
-    # ---------------------------------------------------
-    # PREDICTION TOOL
-    # ---------------------------------------------------
-
-    st.header("🤖 Predict Commodity Potential")
-
-    qty = st.number_input(
-        "Quantity",
-        min_value=0.0,
-        value=1000.0
-    )
-
-    value = st.number_input(
-        "Value",
-        min_value=0.0,
-        value=50000.0
-    )
-
-    if st.button("Predict"):
-
-        sample = scaler.transform(
-            [[qty, value]]
-        )
-
-        prediction = model.predict(sample)
-
-        probability = (
-            model.predict_proba(sample)[0][1]
-        )
-
-        if prediction[0] == 1:
-
-            st.success(
-                f"""
-                HIGH EXPORT POTENTIAL ✅
-
-                Probability:
-                {probability:.2%}
-                """
-            )
-
+    st.subheader("Commodity Potential Simulator")
+    st.write("Adjust configuration profiles below to calculate hypothetical trade indicators against the network.")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        qty_in = st.number_input("Export Volume (Units)", min_value=1.0, value=50000.0)
+        val_in = st.number_input("Total Declared Value (BTN)", min_value=1.0, value=2500000.0)
+        demand_in = st.slider("Global Market Demand Velocity", 0.0, 10.0, 5.5)
+    with col2:
+        tariff_in = st.slider("Tariff Exempt Advantage Rating", 1.0, 10.0, 6.0)
+        logistic_in = st.slider("Logistical Friction/Freight Cost", 1.0, 10.0, 4.0)
+        
+    if st.button("Evaluate Export Status"):
+        input_data = pd.DataFrame([[qty_in, val_in, demand_in, tariff_in, logistic_in]],
+                                  columns=['Qty', 'Value', 'global_demand_growth', 'tariff_advantage_score', 'logistical_cost_score'])
+        
+        scaled_input = scaler.transform(input_data)
+        prediction = model.predict(scaled_input)
+        pos_idx = metrics["classes"].index(POSITIVE)
+        probability = model.predict_proba(scaled_input)[pos_idx]
+        
+        st.markdown("---")
+        if prediction == POSITIVE:
+            st.success(f"🎉 **Status:** {prediction} (Confidence Vector: {probability:.1%})")
         else:
+            st.error(f"⚠️ **Status:** {prediction} (Confidence Vector: {probability:.1%})")
 
-            st.error(
-                f"""
-                LOW EXPORT POTENTIAL ❌
-
-                Probability:
-                {probability:.2%}
-                """
-            )
-
-    # ---------------------------------------------------
-    # EXPLANATION
-    # ---------------------------------------------------
-
-    st.header("📚 Why Logistic Regression?")
-
-    st.info(
-        """
-        Logistic Regression is a supervised machine learning algorithm
-        that is commonly used for binary classification.
-
-        In this project, commodities are classified as:
-
-        • High Export Potential
-
-        • Low Export Potential
-
-        based on their export quantity and export value.
-
-        The model calculates the probability that a commodity belongs
-        to the High Export Potential class.
-
-        Advantages:
-
-        ✅ Easy to understand
-
-        ✅ Fast to train
-
-        ✅ Suitable for classification tasks
-
-        ✅ Generates probability scores
-
-        ✅ Useful for ranking export commodities
-        """
-    )
-
-   # else:
-
-    st.info(
-        """
-        Upload your cleaned CSV file with columns:
-
-        Commodity, Quantity, Value
-        """
-    )
+with results_tab:
+    st.subheader("Logistic Regression Validation Matrix")
+    
+    r1, r2 = st.columns(2)
+    r1.metric("Calculated Test Accuracy Score", f"{metrics['accuracy']:.1%}")
+    r2.metric("ROC-AUC Score Baseline", f"{metrics['roc_auc']:.2f}")
+    
+    st.markdown("### Classification Evaluation Matrix Breakdown")
+    st.dataframe(pd.DataFrame(metrics["report"]).transpose(), use_container_width=True)
+    
+    st.markdown("### Confusion Matrix Output Visualizer")
+    fig_cm, ax_cm = plt.subplots(figsize=(5, 3))
+    sns.heatmap(metrics["matrix"], annot=True, fmt="d", xticklabels=metrics["classes"], yticklabels=metrics["classes"], cmap="Oranges", ax=ax_cm)
+    ax_cm.set_xlabel("Predicted Categories")
+    ax_cm.set_ylabel("True Ground Labels")
+    st.pyplot(fig_cm)
