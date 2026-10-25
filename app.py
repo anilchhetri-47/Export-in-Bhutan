@@ -119,7 +119,7 @@ def run_model_training(data):
 df = get_clean_dataset()
 model, scaler, metrics = run_model_training(df)
 
-st.title("🇧🇹 Bhutan Commodity Export Potential Analysis")
+st.title("Bhutan Commodity Export Potential Analysis")
 st.caption("A live machine learning tracking report reading structured custom files directly from GitHub.")
 st.warning(
     "This Report is not an official assessment of an individual, "
@@ -147,6 +147,13 @@ with overview_tab:
     
     st.markdown("### Process Engineering Workflow")
     st.info("1. Pull Export Dataset ➔ 2. Splite Data ➔ 3. Preprocess Variables ➔ Train Model ➔ 5. Evaluate model ➔ 6. Generate Result")
+    st.info(
+        "A real Bhutanese study would require appropriately collected "
+        "project records, clearly defined indicators, expert validation, "
+        "ethical/data-governance review where applicable, and testing "
+        "against real outcomes before the model could be used for "
+        "Export prediction and decision support."
+    )
 
 with data_tab:
     st.subheader("Exploratory Data Analysis (EDA)")
