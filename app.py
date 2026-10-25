@@ -134,12 +134,12 @@ with overview_tab:
     )
     
     c1, c2, c3 = st.columns(3)
-    c1.metric("Live Catalog Entries", f"{len(df):,}")
+    c1.metric("Commodity Catalog Entries", f"{len(df):,}")
     c2.metric("Pipeline Architecture", "Logistic Regression")
     c3.metric("Class Tuning Weights", "Balanced Scale")
     
     st.markdown("### Process Engineering Workflow")
-    st.info("1. Pull Live Repo Stream ➔ 2. Vectorize Features ➔ 3. Process StandardScaler Scaling ➔ 4. Fit Classifier Model ➔ 5. Expose Tab Validation Metrics")
+    st.info("1. Pull Export Dataset ➔ 2. Splite Data ➔ 3. Preprocess Variables ➔ Train Model ➔ 5. Evaluate model ➔ 6. Generate Result")
 
 with data_tab:
     st.subheader("Exploratory Data Analysis (EDA)")
