@@ -403,7 +403,7 @@ with results_tab:
         """
     )
 
-    else:
+   # else:
 
     st.info(
         """
