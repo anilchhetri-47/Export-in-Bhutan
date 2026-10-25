@@ -173,23 +173,16 @@ with data_tab:
 
 with prediction_tab:
     st.subheader("Commodity Potential Simulator")
-    st.write("Select a specific commodity from your dataset to autofill parameters, or customize values manually.")
-    
-    # 🌟 NEW ADDITION: Commodity Selection Box
-    commodity_list = sorted(df['Commodity_Cleaned'].unique())
-    selected_comm = st.selectbox("Select Commodity Profile Base:", commodity_list)
-    
-    # Fetch historical matching data for the selected commodity
-    comm_data = df[df['Commodity_Cleaned'] == selected_comm].iloc[0]
+    st.write("Adjust configuration profiles below to calculate hypothetical trade indicators against the network.")
     
     col1, col2 = st.columns(2)
     with col1:
-        qty_in = st.number_input("Export Volume (Units)", min_value=0.0, value=float(comm_data['Qty_Cleaned']))
-        val_in = st.number_input("Total Declared Value (BTN)", min_value=0.0, value=float(comm_data['Value_Cleaned']))
-        demand_in = st.slider("Global Market Demand Velocity", 0.0, 10.0, float(comm_data['global_demand_growth']))
+        qty_in = st.number_input("Export Volume (Units)", min_value=1.0, value=50000.0)
+        val_in = st.number_input("Total Declared Value (BTN)", min_value=1.0, value=2500000.0)
+        demand_in = st.slider("Global Market Demand Velocity", 0.0, 10.0, 5.5)
     with col2:
-        tariff_in = st.slider("Tariff Exempt Advantage Rating", 1.0, 10.0, float(comm_data['tariff_advantage_score']))
-        logistic_in = st.slider("Logistical Friction/Freight Cost", 1.0, 10.0, float(comm_data['logistical_cost_score']))
+        tariff_in = st.slider("Tariff Exempt Advantage Rating", 1.0, 10.0, 6.0)
+        logistic_in = st.slider("Logistical Friction/Freight Cost", 1.0, 10.0, 4.0)
         
     if st.button("Evaluate Export Status"):
         input_data = pd.DataFrame([[qty_in, val_in, demand_in, tariff_in, logistic_in]],
@@ -197,17 +190,16 @@ with prediction_tab:
         
         scaled_input = scaler.transform(input_data)
         
+        # 🌟 CRITICAL FIX: Cast prediction and probability explicitly to Python scalars
         prediction_val = str(model.predict(scaled_input)[0])
         pos_idx = metrics["classes"].index(POSITIVE)
         probability_val = float(model.predict_proba(scaled_input)[0][pos_idx])
         
         st.markdown("---")
         if prediction_val == POSITIVE:
-            st.success(f"🎉 **Status for '{selected_comm}':** {prediction_val} (Confidence Vector: {probability_val:.1%})")
+            st.success(f"🎉 **Status:** {prediction_val} (Confidence Vector: {probability_val:.1%})")
         else:
-            st.error(f"⚠️ **Status for '{selected_comm}':** {prediction_val} (Confidence Vector: {probability_val:.1%})")
-
-
+            st.error(f"⚠️ **Status:** {prediction_val} (Confidence Vector: {probability_val:.1%})")
 with results_tab:
     st.subheader("Logistic Regression Validation Matrix")
     
