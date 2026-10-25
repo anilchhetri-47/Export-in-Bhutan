@@ -43,6 +43,36 @@ if uploaded_file is not None:
 
     df = pd.read_csv(uploaded_file)
 
+    overview_tab, data_tab, prediction_tab, results_tab = st.tabs(
+    ["Overview", "Explore data", "Prediction demo", "Model results"]
+)
+
+with overview_tab:
+    st.subheader("Project objective")
+    st.write(
+        "This app shows how logistic regression can identify patterns "
+        "associated with commodities exported to India from Bhutan. The data "
+        "were Taken from Bhutan Trade Statistics 2025"
+        "from MoICE website."
+    )
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Fictional records", f"{len(data):,}")
+    col2.metric("Input features", len(data.columns) - 1)
+    col3.metric("Algorithm", "Logistic regression")
+
+    st.markdown("### Machine-learning workflow")
+    st.write(
+        "1. uploaded data → 2. Split data → 3. Preprocess variables "
+        "→ 4. Train model → 5. Evaluate model → 6. Display results"
+    )
+    st.info(
+        "This dataset has been modified based on my project needs and "
+        "this data analysis is just for project purpose only. "
+        
+    )
+
+with data_tab:
     st.subheader("Dataset Preview")
     st.dataframe(df.head())
 
@@ -93,6 +123,7 @@ if uploaded_file is not None:
         random_state=42
     )
 
+    with prediction_tab:
     # ---------------------------------------------------
     # MODEL
     # ---------------------------------------------------
@@ -212,7 +243,7 @@ if uploaded_file is not None:
     # ---------------------------------------------------
     # FEATURE IMPORTANCE
     # ---------------------------------------------------
-
+with results_tab:
     st.header("📌 Feature Importance")
 
     importance = pd.DataFrame({
