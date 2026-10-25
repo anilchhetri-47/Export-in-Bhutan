@@ -46,7 +46,10 @@ if uploaded_file is not None:
     overview_tab, data_tab, prediction_tab, results_tab = st.tabs(
     ["Overview", "Explore data", "Prediction demo", "Model results"]
 )
-
+    
+ overview_tab, data_tab, prediction_tab, results_tab = st.tabs(
+    ["Overview", "Explore data", "Prediction demo", "Model results"]
+     
 with overview_tab:
     st.subheader("Project objective")
     st.write(
