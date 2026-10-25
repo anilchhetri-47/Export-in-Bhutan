@@ -38,7 +38,7 @@ NEGATIVE = "Standard Growth"
 
 @st.cache_data
 def get_clean_dataset():
-    # 🚨 ACTION REQUIRED: Replace this placeholder with your exact GitHub Raw URL!
+ 
     GITHUB_RAW_URL = "https://raw.githubusercontent.com/anilchhetri-47/Export-in-Bhutan/refs/heads/main/export_dataset_clean%20(1).csv"
     
     try:
@@ -121,6 +121,13 @@ model, scaler, metrics = run_model_training(df)
 
 st.title("🇧🇹 Bhutan Commodity Export Potential Analysis")
 st.caption("A live machine learning tracking report reading structured custom files directly from GitHub.")
+st.warning(
+    "This Report is not an official assessment of an individual, "
+    "private entities or government agencies. It should not be "
+    "used for disciplinary, employment, procurement, or legal decisions. "
+    "The current dataset is synthetic and does not represent actual "
+    "Bhutanese project records."
+)
 
 overview_tab, data_tab, prediction_tab, results_tab = st.tabs([
     "📈 Overview", "🔍 Explore Data", "🔮 Prediction Demo", "📊 Model Results"
@@ -129,7 +136,7 @@ overview_tab, data_tab, prediction_tab, results_tab = st.tabs([
 with overview_tab:
     st.subheader("Project Objectives")
     st.write(
-        "This system processes customs records from Bhutan to discover trade patterns. "
+        "This system processes Bhutan Trade Statistics 2025 records from Bhutan to discover Bhutan's export patterns to India. "
         "Using **Logistic Regression**, it determines if a chosen commodity exhibits properties aligning with high growth sectors."
     )
     
